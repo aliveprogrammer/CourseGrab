@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网课抢课系统 - 主页</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .header {
+            background: linear-gradient(135deg, #1e88e5, #0d47a1);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .course-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 0.8em;
+        }
+
+        .nav-tabs .nav-link.active {
+            border-bottom: 3px solid #0d47a1;
+            font-weight: bold;
+        }
+
+        #selected-courses-container {
+            min-height: 200px;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 新增样式 */
+        .subject-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .subject-title {
+            border-left: 4px solid #0d47a1;
+            padding-left: 10px;
+            margin-bottom: 20px;
+        }
+
+        .course-title {
+            color: #1e88e5;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #dee2e6;
+            margin-bottom: 15px;
+        }
+
+        .course-group {
+            padding: 0 15px;
+        }
+
+        .progress-bar-animated {
+            animation: progress-bar-stripes 1s linear infinite;
+        }
+
+        .plan-card {
+            border-left: 4px solid #1e88e5;
+        }
+
+        .execution-card {
+            border-left: 4px solid #28a745;
+        }
+
+        .status-badge {
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .executing {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .completed {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .failed {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .stopped {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        #course-select {
+            height: 250px;
+        }
+
+        .plan-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .plan-item {
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 3px solid #1e88e5;
+        }
+    </style>
+</head>
+<body>
+<!-- 顶部导航栏 -->
+<div class="header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="fas fa-graduation-cap me-2"></i>网课抢课系统</h1>
+            <div>
+                <span class="me-3">欢迎，{{ username }}！</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 选项卡导航 -->
+    <ul class="nav nav-tabs mb-4" id="courseTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="all-courses-tab" data-bs-toggle="tab"
+                    data-bs-target="#all-courses" type="button" role="tab">
+                全部课程
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="my-courses-tab" data-bs-toggle="tab"
+                    data-bs-target="#my-courses" type="button" role="tab">
+                已选课程
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="plan-tab" data-bs-toggle="tab"
+                    data-bs-target="#plan-courses" type="button" role="tab">
+                <i class="fas fa-robot"></i> 抢课辅助
+            </button>
+        </li>
+    </ul>
+
+    <!-- 选项卡内容 -->
+    <div class="tab-content" id="courseTabsContent">
+        <!-- 全部课程面板 -->
+        <div class="tab-pane fade show active" id="all-courses" role="tabpanel">
+            {% for subject, courses_by_name in courses_by_subject.items() %}
+            <div class="subject-section">
+                <h3 class="subject-title">{{ subject }}</h3>
+                {% for course_name, course_instances in courses_by_name.items() %}
+                <div class="course-group">
+                    <h4 class="course-title">{{ course_name }}</h4>
+                    <div class="row">
+                        {% for course in course_instances %}
+                        <div class="col-md-6" id="course-{{ course.id }}">
+                            <div class="card">
+                                <div class="card-body position-relative">
+                                    {% if course.remaining <= 5 and course.remaining > 0 %}
+                                    <span class="badge bg-danger course-badge">仅剩{{ course.remaining }}名额</span>
+                                    {% elif course.remaining <= 0 %}
+                                    <span class="badge bg-dark course-badge">已满</span>
+                                    {% endif %}
+                                    <h5 class="card-title">{{ course.name }}</h5>
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        <i class="fas fa-user-tie"></i> {{ course.teacher }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <i class="fas fa-clock"></i> {{ course.time }} |
+                                        <i class="fas fa-building"></i> {{ course.location }} |
+                                        <i class="fas fa-users"></i> 名额: {{ course.remaining }}/{{ course.capacity }}
+                                    </p>
+                                    <p class="card-text">{{ course.description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div></div>
+                                        {% if course.name in user_selected %}
+                                        <button class="btn btn-sm btn-secondary" disabled>
+                                            <i class="fas fa-check-circle"></i> 已选其他时段
+                                        </button>
+                                        {% elif course.remaining > 0 %}
+                                        <button class="btn btn-sm btn-success grab-course-btn"
+                                                data-course-id="{{ course.id }}">
+                                            <i class="fas fa-bolt"></i> 选择此时段
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled>
+                                            名额已满
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 已选课程面板 -->
+        <div class="tab-pane fade" id="my-courses" role="tabpanel">
+            {% if selected_by_subject %}
+            {% for subject, courses_by_name in selected_by_subject.items() %}
+            <div class="subject-section">
+                <h3 class="subject-title">{{ subject }}</h3>
+                {% for course_name, course_instances in courses_by_name.items() %}
+                <div class="course-group">
+                    <h4 class="course-title">{{ course_name }}</h4>
+                    <div class="row">
+                        {% for course in course_instances %}
+                        <div class="col-md-6" id="selected-course-{{ course.id }}">
+                            <div class="card fade-in">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ course.name }}</h5>
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        <i class="fas fa-user-tie"></i> {{ course.teacher }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <i class="fas fa-clock"></i> {{ course.time }} |
+                                        <i class="fas fa-building"></i> {{ course.location }} |
+                                        <i class="fas fa-users"></i> 名额: {{ course.remaining }}/{{ course.capacity }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle"></i> 已选
+                                                </span>
+                                        <button class="btn btn-sm btn-danger drop-course-btn"
+                                                data-course-id="{{ course.id }}">
+                                            <i class="fas fa-trash-alt"></i> 退选
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 您尚未选择任何课程，请前往"全部课程"进行抢课
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 抢课辅助面板 -->
+        <div class="tab-pane fade" id="plan-courses" role="tabpanel">
+            <div class="container mt-4">
+                <h2><i class="fas fa-robot"></i> 抢课辅助方案</h2>
+                <p class="text-muted">预先设置多个选课方案，抢课时一键执行所有方案</p>
+
+                <div class="row">
+                    <!-- 方案管理区域 -->
+                    <div class="col-md-5">
+                        <div class="card shadow-sm plan-card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="fas fa-cogs"></i> 方案管理</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">方案名称</label>
+                                    <input type="text" class="form-control" id="plan-name" placeholder="例如：首选方案">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">选择课程</label>
+                                    <select class="form-select" id="course-select" multiple>
+                                        {% for subject, courses_by_name in courses_by_subject.items() %}
+                                        <optgroup label="{{ subject }}">
+                                            {% for course_name, course_instances in courses_by_name.items() %}
+                                            {% for course in course_instances %}
+                                            <option value="{{ course.id }}">
+                                                {{ course.name }} - {{ course.teacher }} ({{ course.time }})
+                                            </option>
+                                            {% endfor %}
+                                            {% endfor %}
+                                        </optgroup>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button class="btn btn-outline-primary" id="add-to-plan">
+                                        <i class="fas fa-plus"></i> 添加到方案
+                                    </button>
+                                    <button class="btn btn-success" id="save-plan">
+                                        <i class="fas fa-save"></i> 保存方案
+                                    </button>
+                                </div>
+
+                                <hr>
+
+                                <h6>我的方案列表</h6>
+                                <div id="saved-plans" class="list-group mt-2">
+                                    <!-- 动态加载保存的方案 -->
+                                    <div class="list-group-item text-center text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> 暂无保存的方案
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 方案执行区域 -->
+                    <div class="col-md-7">
+                        <div class="card shadow-sm execution-card">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-play-circle"></i> 方案执行</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">选择执行方案</label>
+                                    <div id="plans-checkboxes" class="plan-list">
+                                        <!-- 动态加载方案复选框 -->
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between mb-3">
+                                    <button class="btn btn-outline-secondary" id="select-all">
+                                        <i class="fas fa-check-square"></i> 全选
+                                    </button>
+                                    <button class="btn btn-warning" id="execute-plans">
+                                        <i class="fas fa-bolt"></i> 执行选课方案
+                                    </button>
+                                </div>
+
+                                <div id="execution-panel" class="d-none">
+                                    <h5 class="mt-3">执行进度</h5>
+                                    <div class="progress mb-3" style="height: 25px;">
+                                        <div id="execution-progress"
+                                             class="progress-bar progress-bar-striped progress-bar-animated"
+                                             role="progressbar" style="width: 0%">0%
+                                        </div>
+                                    </div>
+
+                                    <div id="current-plan" class="alert alert-info mb-3">
+                                        <i class="fas fa-sync-alt fa-spin"></i> 当前执行: <span
+                                            id="current-plan-name">-</span>
+                                    </div>
+
+                                    <div id="execution-results" class="mb-3">
+                                        <!-- 执行结果将显示在这里 -->
+                                    </div>
+
+                                    <button id="stop-execution" class="btn btn-danger w-100">
+                                        <i class="fas fa-stop-circle"></i> 停止执行
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- JavaScript 依赖 -->
+        <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+
+        <script>
+            $(document).ready(function () {
+                // 抢课按钮处理
+                $('.grab-course-btn').click(function () {
+                    const courseId = $(this).data('course-id');
+                    const $button = $(this);
+                    const $card = $button.closest('.card');
+
+                    $.post('/grab_course', {course_id: courseId}, function (response) {
+                        if (response.success) {
+                            // 更新全部课程列表中的按钮
+                            $button.replaceWith(`
+                        <button class="btn btn-sm btn-secondary" disabled>
+                            <i class="fas fa-check-circle"></i> 已选其他时段
+                        </button>
+                    `);
+
+                            // 更新课程名额显示
+                            const $badge = $card.find('.course-badge');
+                            const remaining = response.remaining;
+
+                            if (remaining <= 0) {
+                                $badge.text('已满').show();
+                            } else if (remaining <= 5) {
+                                $badge.text('仅剩' + remaining + '名额').show();
+                            } else {
+                                $badge.hide();
+                            }
+
+                            // 刷新页面显示最新选课状态
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1000);
+
+                            alert(response.message);
+                        } else {
+                            alert('抢课失败: ' + response.message);
+                        }
+                    }).fail(function () {
+                        alert('请求失败，请检查网络或重试');
+                    });
+                });
+
+                // 退选按钮处理（事件委托处理动态元素）
+                $(document).on('click', '.drop-course-btn', function () {
+                    const courseId = $(this).data('course-id');
+                    const $button = $(this);
+
+                    if (confirm('确定要退选此课程吗？')) {
+                        $.post('/drop_course', {course_id: courseId}, function (response) {
+                            if (response.success) {
+                                // 更新全部课程列表中的按钮
+                                const $courseCard = $('#course-' + courseId);
+                                const $courseBtnContainer = $courseCard.find('.d-flex.justify-content-between.align-items-center');
+
+                                $courseBtnContainer.html(`
+                            <div></div>
+                            <button class="btn btn-sm btn-success grab-course-btn"
+                                    data-course-id="${courseId}">
+                                <i class="fas fa-bolt"></i> 选择此时段
+                            </button>
+                        `);
+
+                                // 更新课程名额显示
+                                const $courseBadge = $courseCard.find('.course-badge');
+                                const remaining = response.remaining;
+
+                                if (remaining <= 0) {
+                                    $courseBadge.text('已满').show();
+                                } else if (remaining <= 5) {
+                                    $courseBadge.text('仅剩' + remaining + '名额').show();
+                                } else {
+                                    $courseBadge.hide();
+                                }
+
+                                // 从"已选课程"列表中移除
+                                $('#selected-course-' + courseId).remove();
+
+                                // 如果已选课程列表为空，显示提示信息
+                                if ($('#selected-courses-container').children().length === 0) {
+                                    $('#selected-courses-container').html(`
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> 您尚未选择任何课程，请前往"全部课程"进行抢课
+                                </div>
+                            `);
+                                }
+
+                                alert(response.message);
+                            } else {
+                                alert('退选失败: ' + response.message);
+                            }
+                        }).fail(function () {
+                            alert('请求失败，请检查网络或重试');
+                        });
+                    }
+                });
+
+                // 抢课辅助功能JavaScript
+                // 加载保存的方案
+// 加载保存的方案
+                function loadPlans() {
+                    $.get('/get_plans', function (response) {
+                        if (response.success) {
+                            const plans = response.plans;
+                            const savedPlansList = $('#saved-plans');
+                            const plansCheckboxes = $('#plans-checkboxes');
+
+                            savedPlansList.empty();
+                            plansCheckboxes.empty();
+
+                            if (Object.keys(plans).length === 0) {
+                                savedPlansList.html(`
+                            <div class="list-group-item text-center text-muted">
+                                <i class="fas fa-info-circle me-1"></i> 暂无保存的方案
+                            </div>
+                        `);
+                                plansCheckboxes.html('<div class="text-center text-muted">暂无方案</div>');
+                                return;
+                            }
+
+                            for (const planName in plans) {
+                                // 添加到方案列表
+                                const planItem = $(`
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">${planName}</h6>
+                                    <small class="text-muted">${plans[planName].length}门课程</small>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-danger delete-plan" data-plan="${planName}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `);
+                                savedPlansList.append(planItem);
+
+                                // 添加到方案复选框
+                                const checkboxItem = $(`
+                            <div class="form-check plan-item">
+                                <input class="form-check-input" type="checkbox" value="${planName}" id="chk-${planName}">
+                                <label class="form-check-label" for="chk-${planName}">
+                                    ${planName} (${plans[planName].length}门课程)
+                                </label>
+                            </div>
+                        `);
+                                plansCheckboxes.append(checkboxItem);
+                            }
+
+                            // 添加删除方案事件
+                            $('.delete-plan').click(function () {
+                                const planName = $(this).data('plan');
+                                deletePlan(planName);
+                            });
+                        }
+                    });
+                }
+
+                // 保存方案 - 修复内容
+                $('#save-plan').click(function () {
+                    const planName = $('#plan-name').val();
+                    const selectedCourses = $('#course-select').val() || [];
+
+                    if (!planName) {
+                        alert('请输入方案名称');
+                        return;
+                    }
+
+                    if (selectedCourses.length === 0) {
+                        alert('请选择至少一门课程');
+                        return;
+                    }
+
+                    // 转换课程ID为整数
+                    const courseIds = selectedCourses.map(id => parseInt(id));
+
+                    $.ajax({
+                        url: '/save_plan',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            name: planName,
+                            courses: courseIds  // 使用转换后的整数数组
+                        }),
+                        success: function (response) {
+                            if (response.success) {
+                                alert('方案保存成功');
+                                loadPlans();
+                                $('#plan-name').val('');
+                                $('#course-select').val([]);
+                            } else {
+                                alert('保存失败: ' + response.message);
+                            }
+                        },
+                        error: function () {
+                            alert('请求失败，请检查网络或重试');
+                        }
+                    });
+                });
+
+                // 添加到方案按钮功能
+                $('#add-to-plan').click(function () {
+                    const selectedCourses = $('#course-select').val() || [];
+
+                    if (selectedCourses.length === 0) {
+                        alert('请先选择要添加的课程');
+                        return;
+                    }
+
+                    // 获取当前方案名称（如果用户已经输入）
+                    const planName = $('#plan-name').val();
+
+                    if (!planName) {
+                        alert('请输入方案名称');
+                        return;
+                    }
+
+                    // 保存方案（与保存按钮相同）
+                    $('#save-plan').click();
+                });
+
+                // 全选方案按钮
+                $('#select-all').click(function () {
+                    $('#plans-checkboxes .form-check-input').prop('checked', true);
+                });
+
+                // 删除方案
+                // 修改deletePlan函数
+                function deletePlan(planName) {
+                    // 防止重复点击
+                    const $deleteBtn = $(`.delete-plan[data-plan="${planName}"]`);
+                    if ($deleteBtn.hasClass('deleting')) return;
+
+                    $deleteBtn.addClass('deleting').prop('disabled', true);
+
+                    if (!confirm(`确定要删除方案 "${planName}" 吗？此操作不可恢复。`)) {
+                        $deleteBtn.removeClass('deleting').prop('disabled', false);
+                        return;
+                    }
+
+                    // 显示加载状态
+                    const originalHtml = $deleteBtn.html();
+                    $deleteBtn.html('<i class="fas fa-spinner fa-spin"></i> 删除中...');
+
+                    $.ajax({
+                        url: '/save_plan',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            name: planName,
+                            courses: [] // 空数组表示删除
+                        }),
+                        success: function (response) {
+                            if (response.success) {
+                                // 显示成功消息
+                                const successMsg = $(`
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        ${response.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `);
+
+                                // 在适当位置显示消息
+                                $('#saved-plans').before(successMsg);
+
+                                // 刷新方案列表
+                                loadPlans();
+                            } else {
+                                // 构建详细错误消息
+                                let errorMsg = response.message;
+
+                                if (response.available_plans && response.available_plans.length > 0) {
+                                    errorMsg += '<br><br>您现有的方案有:<ul class="mt-2">';
+                                    response.available_plans.forEach(plan => {
+                                        errorMsg += `<li>${plan}</li>`;
+                                    });
+                                    errorMsg += '</ul>';
+                                }
+
+                                // 显示错误提示
+                                const errorAlert = $(`
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>删除失败:</strong> ${errorMsg}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `);
+
+                                $('#saved-plans').before(errorAlert);
+                            }
+                        },
+                        error: function (xhr) {
+                            let errorMsg = '请求失败: ' + xhr.statusText;
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg += '<br>' + xhr.responseJSON.message;
+                            }
+
+                            const errorAlert = $(`
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>系统错误:</strong> ${errorMsg}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `);
+
+                            $('#saved-plans').before(errorAlert);
+                        },
+                        complete: function () {
+                            // 恢复按钮状态
+                            $deleteBtn.html(originalHtml).removeClass('deleting').prop('disabled', false);
+                        }
+                    });
+                }
+
+                // 执行方案
+                let executionId = null;
+                let statusInterval = null;
+
+                $('#execute-plans').click(function () {
+                    // 获取选中的方案
+                    const selectedPlans = [];
+                    $('#plans-checkboxes .form-check-input:checked').each(function () {
+                        selectedPlans.push($(this).val());
+                    });
+
+                    if (selectedPlans.length === 0) {
+                        alert('请选择至少一个方案');
+                        return;
+                    }
+
+                    $('#execution-panel').removeClass('d-none');
+                    $('#execution-results').empty();
+                    $('#execution-progress').css('width', '0%').text('0%');
+                    $('#stop-execution').show();
+
+                    $.ajax({
+                        url: '/execute_plans',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({plans: selectedPlans}),
+                        success: function (response) {
+                            if (response.success) {
+                                executionId = response.execution_id;
+
+                                // 开始轮询执行状态
+                                statusInterval = setInterval(function () {
+                                    $.get('/execution_status/' + executionId, function (statusResponse) {
+                                        if (statusResponse.success) {
+                                            const status = statusResponse.status;
+
+                                            // 更新进度
+                                            $('#execution-progress').css('width', status.progress + '%')
+                                                .text(status.progress.toFixed(0) + '%');
+
+                                            // 更新当前方案
+                                            if (status.current_plan) {
+                                                $('#current-plan-name').text(status.current_plan);
+                                            }
+
+                                            // 更新结果 - 修复结果显示
+                                            const resultsDiv = $('#execution-results');
+                                            resultsDiv.empty();
+
+                                            for (const result of status.results) {
+                                                const resultCard = $(`
+                                            <div class="card mb-2">
+                                                <div class="card-header ${result.plan === status.current_plan ? 'bg-info text-white' : ''}">
+                                                    ${result.plan}
+                                                    ${result.message ? `<span class="badge bg-warning float-end">${result.message}</span>` : ''}
+                                                </div>
+                                                <div class="card-body">
+                                                    <ul class="list-group list-group-flush">
+                                                        ${result.courses.map(course => `
+                                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <span class="badge ${course.status === 'success' ? 'bg-success' : course.status === 'failed' ? 'bg-danger' : 'bg-secondary'} me-2">
+                                                                        ${course.status === 'success' ? '✓' : course.status === 'failed' ? '✗' : '...'}
+                                                                    </span>
+                                                                    <strong>${course.name}</strong> - ${course.message || ''}
+                                                                </div>
+                                                            </li>
+                                                        `).join('')}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        `);
+                                                resultsDiv.append(resultCard);
+                                            }
+
+                                            // 执行完成
+                                            if (status.status === 'completed') {
+                                                clearInterval(statusInterval);
+                                                $('#stop-execution').hide();
+                                                $('#current-plan').html('<i class="fas fa-check-circle"></i> 执行完成');
+
+                                                // 刷新页面显示已选课程
+                                                setTimeout(function () {
+                                                    location.reload();
+                                                }, 3000);
+                                            }
+                                        }
+                                    });
+                                }, 1000);
+                            }
+                        },
+                        error: function () {
+                            alert('执行请求发送失败');
+                        }
+                    });
+                });
+
+                // 停止执行
+                $('#stop-execution').click(function () {
+                    if (executionId && statusInterval) {
+                        clearInterval(statusInterval);
+                        // 标记执行状态为停止
+                        $.ajax({
+                            url: '/execution_status/' + executionId,
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({status: 'stopped'}),
+                            success: function () {
+                                $('#current-plan').html('<i class="fas fa-stop-circle"></i> 执行已停止');
+                                $(this).hide();
+                            }
+                        });
+                    }
+                });
+
+                // 初始化加载方案
+                loadPlans();
+            });
+        </script>
+</body>
+</html>
